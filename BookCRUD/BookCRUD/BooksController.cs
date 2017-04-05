@@ -11,50 +11,100 @@ namespace BookCRUD
 {
     public class BooksController : ApiController
     {
-        string fileName = "books.xml";
+        private string fileName = "books.xml"; 
+
+
+
+        // le arquivo com codificacao EBCDIC (code page 500) e retorna lista de livros
+        private List<Book> readXML()
+        {       
+            using (FileStream fs = new FileStream(fileName, FileMode.OpenOrCreate))
+            { 
+                XmlSerializer serializer = new XmlSerializer(typeof(List<Book>));
+                TextReader reader = new StreamReader(fs, Encoding.GetEncoding(500));
+                List<Book> books = (List<Book>)serializer.Deserialize(reader);
+                return books;
+            }
+    
+        }
+
+        //escreve uma lista de livros no arquivo com codificacao EBCDIC
+        private void writeXML(List<Book> books)
+        {  
+            FileStream fs = new FileStream(fileName, FileMode.Create);
+            XmlSerializer ser = new XmlSerializer(typeof(List<Book>));
+            TextWriter writer = new StreamWriter(fs, Encoding.GetEncoding(500));
+            ser.Serialize(writer, books);
+            fs.Dispose();
+        }
+
+
+
 
         // GET api/values 
         public IEnumerable<Book> Get()
         {
-
-            //abrir arquivo e verificar se existe
-            FileStream fs;
+            List<Book> books;
             try
             {
-                fs = new FileStream(fileName, FileMode.Open);
+                books = readXML();
             }
-            catch (FileNotFoundException)
+            catch (InvalidOperationException)
             {
-                HttpResponseMessage errorResponse = Request.CreateErrorResponse(HttpStatusCode.NotFound, "Arquivo de livros não existe");
-                throw new HttpResponseException(errorResponse);
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, "Não há nenhum livro na base"));
             }
-            catch (Exception)
-            {
-                HttpResponseMessage errorResponse = Request.CreateErrorResponse(HttpStatusCode.InternalServerError, "Erro ao abrir arquivo de livros");
-                throw new HttpResponseException(errorResponse);
-            }
-
-
-            //ler arquivo com codificacao EBCDIC (code page 500)
-            XmlSerializer serializer = new XmlSerializer(typeof(List<Book>));
-            TextReader reader = new StreamReader(fs, Encoding.GetEncoding(500));
-            List<Book> books = (List<Book>)serializer.Deserialize(reader);
-
-
-            fs.Dispose();
 
             return books;
         }
 
         // GET api/values/5 
-        public string Get(int id)
+        public Book Get(int isbn)
         {
-            return "value";
+            List<Book> books;
+            try
+            {
+                books = readXML();
+            }
+            catch (InvalidOperationException)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, "Não há nenhum livro na base"));
+            }
+
+            //retornar o livro com isbn correspondente
+            Book book = books.Find(x => x.isbn == isbn);
+            if (book == null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, "Livro não encontrado"));
+            }
+            else
+            {
+                return book;
+            }
         }
 
         // POST api/values 
-        public void Post([FromBody]string value)
+        public void Post([FromBody]Book book)
         {
+            List<Book> books;
+            try
+            {
+                books = readXML();
+            }
+            catch (InvalidOperationException)
+            {
+                books = new List<Book>();
+            }
+
+
+            if (books.Find(x => x.isbn == book.isbn) == null)
+            {
+                books.Add(book);
+                writeXML(books);
+            }
+            else
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Livro já existe na base"));
+            }
         }
 
         // PUT api/values/5 
