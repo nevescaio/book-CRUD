@@ -15,7 +15,7 @@ namespace BookCRUD
 
 
 
-        // le arquivo com codificacao EBCDIC (code page 500) e retorna lista de livros
+        //le arquivo com codificacao EBCDIC (code page 500) e retorna lista de livros
         private List<Book> readXML()
         {       
             using (FileStream fs = new FileStream(fileName, FileMode.OpenOrCreate))
@@ -60,6 +60,7 @@ namespace BookCRUD
         // GET api/values/5 
         public Book Get(int isbn)
         {
+            //ler livros do arquivo
             List<Book> books;
             try
             {
@@ -85,6 +86,15 @@ namespace BookCRUD
         // POST api/values 
         public void Post([FromBody]Book book)
         {
+            //verificar se o objeto foi passado
+            if (book == null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Livro não enviado"));
+            }
+
+
+
+            //ler arquivos do livro
             List<Book> books;
             try
             {
@@ -95,7 +105,7 @@ namespace BookCRUD
                 books = new List<Book>();
             }
 
-
+            //verificar se o livro ja existe na base antes de adicionar
             if (books.Find(x => x.isbn == book.isbn) == null)
             {
                 books.Add(book);
@@ -108,13 +118,75 @@ namespace BookCRUD
         }
 
         // PUT api/values/5 
-        public void Put(int id, [FromBody]string value)
+        public void Put(int isbn, [FromBody]Book book)
         {
+            //ler livros do arquivo
+            List<Book> books;
+            try
+            {
+                books = readXML();
+            }
+            catch (InvalidOperationException)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, "Não há nenhum livro na base"));
+            }
+
+            //verificar se o objeto foi passado
+            if (book == null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Livro não enviado"));
+            }
+
+            //verificar se o livro existe na base
+            Book existingBook = books.Find(x => x.isbn == isbn);
+            if (existingBook == null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, "Livro não encontrado"));
+            }
+
+            //verificar se o novo isbn ja existe na base
+            if (book.isbn != isbn && books.Find(x => x.isbn == book.isbn) != null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Livro já existe na base"));
+            }
+
+            //atualizar o livro
+            existingBook.name = book.name;
+            existingBook.isbn = book.isbn;
+            existingBook.author = book.author;
+
+            //escrever no arquivo
+            writeXML(books);
+
         }
 
         // DELETE api/values/5 
-        public void Delete(int id)
+        public void Delete(int isbn)
         {
+            //ler livros do arquivo
+            List<Book> books;
+            try
+            {
+                books = readXML();
+            }
+            catch (InvalidOperationException)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, "Não há nenhum livro na base"));
+            }
+
+            //verificar se o livro existe na base
+            Book existingBook = books.Find(x => x.isbn == isbn);
+            if (existingBook == null)
+            {
+                throw new HttpResponseException(Request.CreateErrorResponse(HttpStatusCode.NotFound, "Livro não encontrado"));
+            }
+
+            //remover o livro
+            books.Remove(existingBook);
+
+            //escrever no arquivo
+            writeXML(books);
+
         }
     }
 }
