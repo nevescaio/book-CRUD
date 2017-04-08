@@ -10,7 +10,7 @@ namespace BookCRUD
     public class Book
     {
         public string name { get; set; }
-        public int isbn { get; set; }
+        public long isbn { get; set; }
         public string author { get; set; }
     }
 }

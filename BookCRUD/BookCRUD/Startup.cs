@@ -15,6 +15,8 @@ namespace BookCRUD
 
             config.MapHttpAttributeRoutes();
 
+            config.MessageHandlers.Add(new LogHandler());
+
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",
                 routeTemplate: "api/{controller}/{id}",
